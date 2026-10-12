@@ -5,7 +5,9 @@ This folder provides ready-to-use sample projects and simulation scripts to demo
 ## Contents
 
 - **`helloworld-sample/`**: A sample Java/Maven Hello World project configured with `sourcelume-maven-plugin`.
-- **`simulate-run.sh`**: An automated end-to-end simulation runner that builds the sample, executes provenance record generation, simulates dry-run submission, validates against the local registry, publishes to the local registry, and queries the registry to verify ingestion.
+- **`helloworld-cmake-sample/`**: A sample C++/CMake Hello World project configured with `sourcelume-cmake-module`.
+- **`simulate-run.sh`**: Automated simulation runner for Maven projects.
+- **`simulate-run-cmake.sh`**: Automated simulation runner for CMake projects.
 
 ---
 
@@ -115,6 +117,28 @@ mvn sourcelume:publish \
   -Dregistry.url=http://localhost:8082 \
   -Dregistry.username=admin \
   -Dregistry.password=admin
+```
+
+---
+
+## Manual Execution Walkthrough (CMake / C++)
+
+You can also test the CMake module workflow directly in `examples/helloworld-cmake-sample`:
+
+```bash
+cd examples/helloworld-cmake-sample
+
+# Build and generate provenance record
+cmake -B build -DBUILD_TESTING=ON
+cmake --build build
+cmake --build build --target sourcelume_generate
+
+# Dry-run publish
+SOURCELUME_DRY_RUN=1 cmake --build build --target sourcelume_publish
+
+# Live validation & publishing (when registry is running at localhost:8082)
+cmake --build build --target sourcelume_validate
+cmake --build build --target sourcelume_publish
 ```
 
 ---

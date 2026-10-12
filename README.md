@@ -8,9 +8,9 @@ Apache Sourcelume Tooling simplifies the process by which projects describe thei
 
 This repository provides native plugins and modules for various build ecosystems:
 - **`sourcelume-maven-plugin`** (JVM / Maven)
+- **`sourcelume-cmake-module`** (C / C++ / CMake)
 - **`sourcelume-gradle-plugin`** *(Roadmap - JVM / Gradle)*
 - **`sourcelume-hatch-plugin`** *(Roadmap - Python / Hatch)*
-- **`sourcelume-cmake-module`** *(Roadmap - C / C++ / CMake)*
 
 ---
 
@@ -120,33 +120,120 @@ Add the plugin to your `pom.xml`:
 
 ---
 
+## Sourcelume CMake Module (`sourcelume-cmake-module`)
+
+The `sourcelume-cmake-module` brings Sourcelume specification generation, validation, and submission support to C and C++ projects using CMake.
+
+### Targets
+
+| Target | Description |
+|---|---|
+| `sourcelume_generate` / `sourcelume-generate` | Generates a `provenance-record.json` spec file from CMake project metadata. |
+| `sourcelume_validate` / `sourcelume-validate` | Validates the spec against the registry's `/records/validate` endpoint. |
+| `sourcelume_publish` / `sourcelume-publish` | Submits the generated spec to the registry (`POST /records`). |
+
+### Quickstart & Usage
+
+Include the module in `CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.19)
+project(my-cpp-project VERSION 1.0.0 LANGUAGES CXX)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(Sourcelume)
+
+sourcelume_enable(
+    REGISTRY_URL "http://localhost:8082"
+    LICENSE "Apache-2.0"
+    LICENSE_CATEGORY "open-source"
+    LICENSE_NOTE "Permissive open source dataset"
+    DATASET_IDENTIFIER "sourcelume://datasets/sample-cpp-dataset-v1"
+    DATASET_NAME "My C++ Training Dataset"
+)
+```
+
+Run target commands:
+
+```bash
+# Configure the build directory
+cmake -B build
+
+# Generate spec
+cmake --build build --target sourcelume_generate
+
+# Dry run publish
+SOURCELUME_DRY_RUN=1 cmake --build build --target sourcelume_publish
+
+# Publish to live registry
+cmake --build build --target sourcelume_publish
+```
+
+---
+
 ## Building and Testing
 
 Prerequisites:
 - Java 17+
 - Maven 3.9+
+- CMake 3.19+
+
+### Maven Tooling
 
 ```bash
-# Build and run all tests
+# Build and run all Maven tests
 mvn clean test
 
 # Install locally to test with sample Maven projects
 mvn clean install
 ```
 
-## Running Examples & Simulation
-
-A ready-to-run sample project and simulation script are provided in the `examples/` directory:
+### CMake Module
 
 ```bash
-# Run automated simulation
+cd plugins/sourcelume-cmake-module
+
+# Configure build directory with testing enabled
+cmake -B build -DBUILD_TESTING=ON
+
+# Generate module provenance record
+cmake --build build --target sourcelume_generate
+
+# Run module test suite
+ctest --test-dir build --output-on-failure
+```
+
+### C++ Sample Application
+
+```bash
+cd examples/helloworld-cmake-sample
+
+# Configure and compile
+cmake -B build -DBUILD_TESTING=ON
+cmake --build build
+
+# Run application tests
+ctest --test-dir build --output-on-failure
+
+# Generate sample provenance record
+cmake --build build --target sourcelume_generate
+```
+
+## Running Examples & Simulation
+
+Ready-to-run sample projects and simulation scripts are provided in the `examples/` directory:
+
+```bash
+# Run automated simulation for Maven
 ./examples/simulate-run.sh
 
-# Or explore the sample project directly
-cd examples/helloworld-sample
-mvn compile sourcelume:generate
-mvn sourcelume:publish -Dsourcelume.dryRun=true
+# Run automated simulation for CMake
+./examples/simulate-run-cmake.sh
 ```
+
+Or explore the sample projects directly:
+- Maven Sample: `cd examples/helloworld-sample && mvn compile sourcelume:generate`
+- CMake Sample: `cd examples/helloworld-cmake-sample && cmake -B build && cmake --build build --target sourcelume_generate`
 
 See [examples/README.md](examples/README.md) for full details and live registry verification instructions.
 

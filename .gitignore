@@ -8,3 +8,7 @@ target/
 
 # Do not check in example targets
 examples/helloworld-sample/target
+examples/helloworld-cmake-sample/build
+plugins/sourcelume-cmake-module/build
+build/
+CMakeUserPresets.json
