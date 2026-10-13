@@ -158,7 +158,27 @@
           <artifactId>maven-surefire-plugin</artifactId>
           <version>3.2.5</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.rat</groupId>
+          <artifactId>apache-rat-plugin</artifactId>
+          <configuration>
+            <excludes>
+              <exclude>**/*.egg-info/**</exclude>
+              <exclude>**/sourcelume_python_plugin.egg-info/**</exclude>
+              <exclude>**/provenance-record.json</exclude>
+              <exclude>**/uv.lock</exclude>
+              <exclude>**/.pytest_cache/**</exclude>
+              <exclude>**/.venv/**</exclude>
+            </excludes>
+          </configuration>
+        </plugin>
       </plugins>
     </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.rat</groupId>
+        <artifactId>apache-rat-plugin</artifactId>
+      </plugin>
+    </plugins>
   </build>
 </project>
