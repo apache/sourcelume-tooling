@@ -19,7 +19,8 @@ import typer
 import os
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
+from pydantic import ValidationError
 from .generator import SourcelumeGenerator
 from .client import SourcelumeClient
 from .models import ProvenanceRecord
@@ -28,6 +29,30 @@ app = typer.Typer(help="Apache Sourcelume Tooling CLI")
 
 def get_record_path(project_dir: Path) -> Path:
     return project_dir / "provenance-record.json"
+
+
+def load_submission(record_path: Path) -> Union[ProvenanceRecord, str]:
+    """Loads a record for submission to the registry.
+
+    Dataset records (`type: ProvenanceRecord`) are checked against the plugin's
+    own model before they leave the machine. Every other record type — the
+    spec grows them faster than a local model can — is passed through
+    verbatim and judged by the registry, which is the authority anyway.
+    """
+    with open(record_path, "r", encoding="utf-8") as f:
+        record_data = f.read()
+    try:
+        record_type = json.loads(record_data).get("type", "ProvenanceRecord")
+    except json.JSONDecodeError as e:
+        typer.echo(f"Error: {record_path} is not valid JSON: {e}", err=True)
+        raise typer.Exit(code=1)
+    if record_type == "ProvenanceRecord":
+        try:
+            return ProvenanceRecord.model_validate_json(record_data)
+        except ValidationError as e:
+            typer.echo(f"Error: {record_path} is not a valid dataset record: {e}", err=True)
+            raise typer.Exit(code=1)
+    return record_data
 
 @app.command()
 def generate(
@@ -68,8 +93,7 @@ def validate(
 
     typer.echo(f"Validating {record_path} against {registry_url}...")
 
-    with open(record_path, "r", encoding="utf-8") as f:
-        record_data = f.read()
+    record = load_submission(record_path)
 
     client = SourcelumeClient(
         registry_url=registry_url,
@@ -79,7 +103,7 @@ def validate(
     )
 
     try:
-        response = client.validate(ProvenanceRecord.model_validate_json(record_data))
+        response = client.validate(record)
         if response.is_success:
             typer.echo("✅ Validation successful!")
         else:
@@ -108,8 +132,7 @@ def publish(
 
     typer.echo(f"Publishing {record_path} to {registry_url}...")
 
-    with open(record_path, "r", encoding="utf-8") as f:
-        record_data = f.read()
+    record = load_submission(record_path)
 
     client = SourcelumeClient(
         registry_url=registry_url,
@@ -119,7 +142,7 @@ def publish(
     )
 
     try:
-        response = client.publish(ProvenanceRecord.model_validate_json(record_data))
+        response = client.publish(record)
         if response.is_success:
             typer.echo("✅ Publication successful!")
         elif response.is_conflict and allow_conflict:
