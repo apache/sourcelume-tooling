@@ -143,10 +143,22 @@ def publish(
 
     try:
         response = client.publish(record)
-        if response.is_success:
+        if response.is_success and response.is_incomplete:
+            typer.echo(
+                "❌ Publication incomplete: the registry stored the record as INCOMPLETE. "
+                "Fix these issues and publish again:",
+                err=True,
+            )
+            for line in response.validation_issues:
+                typer.echo(f"  - {line}", err=True)
+            raise typer.Exit(code=1)
+        elif response.is_success:
             typer.echo("✅ Publication successful!")
         elif response.is_conflict and allow_conflict:
-            typer.echo("⚠️ Record already exists in registry (HTTP 409). Continuing as --allow-conflict is set.")
+            typer.echo(
+                f"⚠️ The registry refused the record (HTTP 409): {response.reason or response.body}. "
+                "Continuing as --allow-conflict is set."
+            )
             typer.echo("✅ Publication successful!")
         else:
             typer.echo(f"❌ Publication failed: {response.error_message}", err=True)

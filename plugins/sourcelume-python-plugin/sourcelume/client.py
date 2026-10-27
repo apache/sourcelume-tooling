@@ -17,7 +17,8 @@
 
 import httpx
 import base64
-from typing import Optional, Union
+import json
+from typing import Any, Optional, Union
 from .models import ProvenanceRecord
 
 
@@ -29,6 +30,12 @@ class SourcelumeResponse:
         self.is_success = 200 <= status_code < 300
         self.is_conflict = status_code == 409
         self.is_validation_error = status_code == 422
+        fields = _json_object(self.body)
+        # The registry stores an invalid record as INCOMPLETE and still answers 2xx.
+        self.record_status: Optional[str] = fields.get("recordStatus")
+        self.is_incomplete = self.record_status == "INCOMPLETE"
+        self.reason: Optional[str] = fields.get("reason")
+        self.validation_issues = _issue_lines(fields.get("validationIssues"))
 
     @classmethod
     def success(cls, status_code: int, body: str = "") -> "SourcelumeResponse":
@@ -37,6 +44,34 @@ class SourcelumeResponse:
     @classmethod
     def error(cls, status_code: int, body: str = "", error_message: str = "") -> "SourcelumeResponse":
         return cls(status_code, body, error_message)
+
+
+def _json_object(text: str) -> dict[str, Any]:
+    try:
+        value = json.loads(text)
+    except ValueError:
+        return {}
+    return value if isinstance(value, dict) else {}
+
+
+def _issue_lines(issues: Any) -> list[str]:
+    """The registry sends validationIssues as a JSON array inside a string."""
+    if isinstance(issues, str):
+        try:
+            issues = json.loads(issues)
+        except ValueError:
+            return [issues]
+    if not isinstance(issues, list):
+        return []
+    lines = []
+    for issue in issues:
+        if isinstance(issue, dict):
+            path = issue.get("path")
+            message = issue.get("message", "")
+            lines.append(f"{path}: {message}" if path else str(message))
+        else:
+            lines.append(str(issue))
+    return lines
 
 
 class SourcelumeClient:
@@ -100,10 +135,11 @@ class SourcelumeClient:
             if response.is_success:
                 return SourcelumeResponse.success(response.status_code, response.text)
             elif response.status_code == 409:
+                reason = _json_object(response.text).get("reason") or response.text
                 return SourcelumeResponse.error(
                     response.status_code,
                     response.text,
-                    f"Record already exists in registry (HTTP 409): {response.text}",
+                    f"The registry refused the record (HTTP 409): {reason}",
                 )
             else:
                 return SourcelumeResponse.error(

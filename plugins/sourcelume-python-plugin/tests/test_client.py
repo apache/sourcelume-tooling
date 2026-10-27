@@ -17,6 +17,8 @@
 
 """Tests for SourcelumeClient."""
 
+import json
+
 import respx
 import httpx
 from sourcelume.client import SourcelumeClient, SourcelumeResponse
@@ -87,4 +89,60 @@ def test_validate_record_failure_422():
     assert resp.is_validation_error
     assert resp.status_code == 422
     assert "422" in resp.error_message
+    client.close()
+
+
+INCOMPLETE_ANSWER = {
+    "qualifiedName": "urn:test",
+    "recordStatus": "INCOMPLETE",
+    "validationIssues": json.dumps([
+        {"validatorId": "json-schema", "severity": "VIOLATION", "path": "/", "message": "required property 'license' not found"}
+    ]),
+}
+
+
+@respx.mock
+def test_publish_reports_an_incomplete_record():
+    respx.post("http://localhost:8082/records").mock(return_value=httpx.Response(201, json=INCOMPLETE_ANSWER))
+
+    client = SourcelumeClient(registry_url="http://localhost:8082")
+    resp = client.publish('{"id": "urn:test"}')
+
+    assert resp.is_success
+    assert resp.is_incomplete
+    assert resp.record_status == "INCOMPLETE"
+    assert resp.validation_issues == ["/: required property 'license' not found"]
+    client.close()
+
+
+@respx.mock
+def test_publish_of_a_validated_record_is_not_incomplete():
+    respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(201, json={"qualifiedName": "urn:test", "recordStatus": "VALIDATED"})
+    )
+
+    client = SourcelumeClient(registry_url="http://localhost:8082")
+    resp = client.publish('{"id": "urn:test"}')
+
+    assert resp.is_success
+    assert not resp.is_incomplete
+    assert resp.validation_issues == []
+    client.close()
+
+
+@respx.mock
+def test_publish_conflict_names_the_registry_reason():
+    respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(
+            409,
+            json={"qualifiedName": "urn:test", "recordStatus": "VALIDATED", "reason": "The id belongs to a VALIDATED record"},
+        )
+    )
+
+    client = SourcelumeClient(registry_url="http://localhost:8082")
+    resp = client.publish('{"id": "urn:test"}')
+
+    assert resp.is_conflict
+    assert resp.reason == "The id belongs to a VALIDATED record"
+    assert "The id belongs to a VALIDATED record" in resp.error_message
     client.close()
