@@ -57,13 +57,22 @@ public class PublishMojo extends AbstractSourcelumeMojo {
 
         try {
             SourcelumeResponse response = client.publish(json);
-            if (response.isSuccess()) {
+            if (response.isSuccess() && response.isIncomplete()) {
+                String errorMsg = "The registry stored the record as INCOMPLETE; fix these issues and publish again:"
+                    + System.lineSeparator() + "  - "
+                    + String.join(System.lineSeparator() + "  - ", response.getValidationIssues());
+                if (failOnError) {
+                    throw new MojoFailureException(errorMsg);
+                } else {
+                    getLog().warn(errorMsg);
+                }
+            } else if (response.isSuccess()) {
                 getLog().info("Successfully published record to Sourcelume Registry! Status: " + response.getStatusCode());
                 if (!response.getBody().isBlank()) {
                     getLog().info("Registry response: " + response.getBody());
                 }
             } else if (response.isConflict() && allowConflict) {
-                getLog().warn("Record already exists in Sourcelume Registry (HTTP 409 Conflict). Continuing as allowConflict=true.");
+                getLog().warn(response.getErrorMessage() + ". Continuing as allowConflict=true.");
             } else {
                 String errorMsg = "Failed to publish record to Sourcelume Registry (HTTP " + response.getStatusCode() + "): " + response.getBody();
                 if (failOnError) {

@@ -16,10 +16,18 @@
  */
 package org.apache.sourcelume.tooling.maven.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Encapsulates an HTTP response from the Sourcelume Registry.
  */
 public class SourcelumeResponse {
+
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final int statusCode;
     private final String body;
@@ -61,6 +69,61 @@ public class SourcelumeResponse {
 
     public boolean isValidationError() {
         return statusCode == 422;
+    }
+
+    /** The {@code recordStatus} the registry answered with, or {@code null} if the body has none. */
+    public String getRecordStatus() {
+        return textField("recordStatus");
+    }
+
+    /** The registry stores an invalid record as INCOMPLETE and still answers 2xx. */
+    public boolean isIncomplete() {
+        return "INCOMPLETE".equals(getRecordStatus());
+    }
+
+    /** The {@code reason} of a 409 answer, or {@code null} if the body has none. */
+    public String getReason() {
+        return textField("reason");
+    }
+
+    /**
+     * The validation issues as {@code path: message} lines. The registry sends
+     * {@code validationIssues} as a JSON array inside a string.
+     */
+    public List<String> getValidationIssues() {
+        String issues = textField("validationIssues");
+        List<String> lines = new ArrayList<>();
+        if (issues == null) {
+            return lines;
+        }
+        JsonNode array = parse(issues);
+        if (array == null || !array.isArray()) {
+            lines.add(issues);
+            return lines;
+        }
+        for (JsonNode issue : array) {
+            String path = issue.path("path").asText("");
+            String message = issue.path("message").asText(issue.toString());
+            lines.add(path.isEmpty() ? message : path + ": " + message);
+        }
+        return lines;
+    }
+
+    private String textField(String name) {
+        JsonNode root = parse(body);
+        if (root == null || !root.isObject()) {
+            return null;
+        }
+        JsonNode field = root.get(name);
+        return field != null && field.isTextual() ? field.asText() : null;
+    }
+
+    private static JsonNode parse(String text) {
+        try {
+            return MAPPER.readTree(text);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

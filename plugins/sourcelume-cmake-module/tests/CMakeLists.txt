@@ -34,3 +34,8 @@ add_test(
     NAME test_script_mode
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_script_mode.cmake"
 )
+
+add_test(
+    NAME test_publish_outcomes
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_publish_outcomes.cmake"
+)

@@ -170,6 +170,42 @@ def test_cli_publish_passes_model_records_through_untouched(tmp_path):
     assert json.loads(route.calls.last.request.content) == TRAINING_RECORD
 
 
+
+@respx.mock
+def test_cli_publish_fails_when_the_registry_stores_the_record_as_incomplete(tmp_path):
+    (tmp_path / "provenance-record.json").write_text(json.dumps(TRAINING_RECORD))
+    respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(
+            201,
+            json={
+                "recordStatus": "INCOMPLETE",
+                "validationIssues": json.dumps([{"path": "/", "message": "required property 'license' not found"}]),
+            },
+        )
+    )
+
+    result = runner.invoke(app, ["publish", str(tmp_path), "--registry-url", "http://localhost:8082"])
+
+    assert result.exit_code == 1
+    assert "Publication successful!" not in result.output
+    assert "INCOMPLETE" in result.output
+    assert "/: required property 'license' not found" in result.output
+
+
+@respx.mock
+def test_cli_publish_allow_conflict_shows_the_registry_reason(tmp_path):
+    (tmp_path / "provenance-record.json").write_text(json.dumps(TRAINING_RECORD))
+    respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(409, json={"reason": "The id belongs to a VALIDATED record"})
+    )
+
+    result = runner.invoke(
+        app, ["publish", str(tmp_path), "--registry-url", "http://localhost:8082", "--allow-conflict"]
+    )
+
+    assert result.exit_code == 0
+    assert "The id belongs to a VALIDATED record" in result.output
+
 def test_cli_rejects_broken_json_with_a_clean_error(tmp_path):
     (tmp_path / "provenance-record.json").write_text("{not json")
 

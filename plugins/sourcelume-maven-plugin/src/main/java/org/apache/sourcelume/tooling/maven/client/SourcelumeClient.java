@@ -106,7 +106,9 @@ public class SourcelumeClient {
         if (statusCode >= 200 && statusCode < 300) {
             return SourcelumeResponse.success(statusCode, body);
         } else if (statusCode == 409) {
-            return SourcelumeResponse.error(statusCode, body, "Record already exists in registry (HTTP 409): " + body);
+            SourcelumeResponse conflict = SourcelumeResponse.error(statusCode, body, null);
+            String reason = conflict.getReason() != null ? conflict.getReason() : body;
+            return SourcelumeResponse.error(statusCode, body, "The registry refused the record (HTTP 409): " + reason);
         } else {
             return SourcelumeResponse.error(statusCode, body, "Publish failed with HTTP " + statusCode + ": " + body);
         }

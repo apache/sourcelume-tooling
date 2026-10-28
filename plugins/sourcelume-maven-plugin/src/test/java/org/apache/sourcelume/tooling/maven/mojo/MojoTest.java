@@ -137,6 +137,50 @@ class MojoTest {
     }
 
     @Test
+    void testPublishMojoFailsWhenTheRecordIsStoredAsIncomplete() throws Exception {
+        serveIncomplete();
+
+        PublishMojo mojo = publishTo(serverUrl + "/incomplete");
+        mojo.setFailOnError(true);
+
+        assertThatThrownBy(mojo::execute)
+            .isInstanceOf(MojoFailureException.class)
+            .hasMessageContaining("INCOMPLETE")
+            .hasMessageContaining("/: required property 'license' not found");
+    }
+
+    @Test
+    void testPublishMojoOnlyWarnsAboutAnIncompleteRecordWithoutFailOnError() throws Exception {
+        serveIncomplete();
+
+        PublishMojo mojo = publishTo(serverUrl + "/incomplete");
+        mojo.setFailOnError(false);
+
+        mojo.execute();
+    }
+
+    private void serveIncomplete() {
+        server.createContext("/incomplete", exchange -> {
+            byte[] response = ("{\"recordStatus\":\"INCOMPLETE\",\"validationIssues\":"
+                + "\"[{\\\"path\\\":\\\"/\\\",\\\"message\\\":\\\"required property 'license' not found\\\"}]\"}")
+                .getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(201, response.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response);
+            }
+        });
+    }
+
+    private PublishMojo publishTo(String registryUrl) {
+        PublishMojo mojo = new PublishMojo();
+        mojo.setProject(project);
+        mojo.setOutputFile(tempDir.resolve("target/sourcelume/provenance-record.json").toFile());
+        mojo.setRegistryUrl(registryUrl);
+        return mojo;
+    }
+
+    @Test
     void testPublishMojoFailureWhenServerReturnsError() throws Exception {
         server.createContext("/records-error", exchange -> {
             byte[] response = "{\"error\":\"invalid\"}".getBytes(StandardCharsets.UTF_8);
