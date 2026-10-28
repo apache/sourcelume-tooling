@@ -5,3 +5,25 @@
 .junie/
 target/
 *.class
+
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+*.egg-info/
+dist/
+*.egg
+
+# Generated provenance records
+provenance-record.json
+
+# Do not check in example targets
+examples/helloworld-sample/target
+examples/helloworld-cmake-sample/build
+examples/helloworld-python-sample/.venv
+plugins/sourcelume-cmake-module/build
+plugins/sourcelume-python-plugin/.venv
+build/
+CMakeUserPresets.json
