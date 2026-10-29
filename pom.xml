@@ -175,9 +175,20 @@
       </plugins>
     </pluginManagement>
     <plugins>
+      <!-- The Apache parent only sets RAT's version and never runs it;
+           binding it here makes `mvn verify` (and CI) fail on missing headers. -->
       <plugin>
         <groupId>org.apache.rat</groupId>
         <artifactId>apache-rat-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>rat-check</id>
+            <goals>
+              <goal>check</goal>
+            </goals>
+            <phase>validate</phase>
+          </execution>
+        </executions>
       </plugin>
     </plugins>
   </build>
