@@ -49,6 +49,15 @@ sourcelume_enable(
 )
 ```
 
+Or, after installing the module (`cmake -B build && cmake --install build`), load it with `find_package`:
+
+```cmake
+find_package(Sourcelume 0.0.1 REQUIRED)  # add the install prefix to CMAKE_PREFIX_PATH
+sourcelume_enable(LICENSE "Apache-2.0")
+```
+
+`DRY_RUN`, `FAIL_ON_ERROR` and `ALLOW_CONFLICT` take `TRUE` or `FALSE` (for example `DRY_RUN TRUE`). A keyword with no value means `TRUE`; an empty value leaves the option unset.
+
 ### 2. Available CMake Custom Targets
 
 When `sourcelume_enable()` is configured, the following targets are registered in your build system:

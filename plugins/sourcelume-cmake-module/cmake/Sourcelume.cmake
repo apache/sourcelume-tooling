@@ -701,8 +701,11 @@ endfunction()
 # Target Setup Function: sourcelume_enable / sourcelume_add_targets
 # -----------------------------------------------------------------------------
 function(sourcelume_enable)
-    set(options DRY_RUN FAIL_ON_ERROR ALLOW_CONFLICT)
+    set(options)
     set(oneValueArgs
+        DRY_RUN
+        FAIL_ON_ERROR
+        ALLOW_CONFLICT
         TARGET_NAME
         PROJECT_NAME
         OUTPUT_FILE
@@ -725,7 +728,28 @@ function(sourcelume_enable)
         PASSWORD
         TOKEN
     )
-    cmake_parse_arguments(SL "${options}" "${oneValueArgs}" "" ${ARGN})
+    cmake_parse_arguments(PARSE_ARGV 0 SL "${options}" "${oneValueArgs}" "")
+
+    # DRY_RUN, FAIL_ON_ERROR and ALLOW_CONFLICT take TRUE|FALSE; a bare keyword
+    # means TRUE, an empty value means not set (PARSE_ARGV keeps "" as a value).
+    # The generated scripts run under cmake -P, so the choices are written into
+    # them here.
+    foreach(_flag DRY_RUN FAIL_ON_ERROR ALLOW_CONFLICT)
+        if("${_flag}" IN_LIST SL_KEYWORDS_MISSING_VALUES)
+            set(SL_${_flag} TRUE)
+        endif()
+    endforeach()
+    set(_SL_RUN_ARGS "")
+    if(SL_DRY_RUN)
+        string(APPEND _SL_RUN_ARGS "\n    DRY_RUN")
+    endif()
+    if(NOT "${SL_FAIL_ON_ERROR}" STREQUAL "")
+        string(APPEND _SL_RUN_ARGS "\n    FAIL_ON_ERROR \"${SL_FAIL_ON_ERROR}\"")
+    endif()
+    set(_SL_PUBLISH_ARGS "${_SL_RUN_ARGS}")
+    if(SL_ALLOW_CONFLICT)
+        string(APPEND _SL_PUBLISH_ARGS "\n    ALLOW_CONFLICT")
+    endif()
 
     # Capture project context defaults at configuration time
     if(NOT SL_PROJECT_NAME)
@@ -802,7 +826,7 @@ sourcelume_validate(
     USERNAME \"${SL_USERNAME}\"
     PASSWORD \"${SL_PASSWORD}\"
     TOKEN \"${SL_TOKEN}\"
-    RECORD_FILE \"${SL_OUTPUT_FILE}\"
+    RECORD_FILE \"${SL_OUTPUT_FILE}\"${_SL_RUN_ARGS}
 )
 ")
 
@@ -814,7 +838,7 @@ sourcelume_publish(
     USERNAME \"${SL_USERNAME}\"
     PASSWORD \"${SL_PASSWORD}\"
     TOKEN \"${SL_TOKEN}\"
-    RECORD_FILE \"${SL_OUTPUT_FILE}\"
+    RECORD_FILE \"${SL_OUTPUT_FILE}\"${_SL_PUBLISH_ARGS}
 )
 ")
 
