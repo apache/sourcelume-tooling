@@ -39,3 +39,13 @@ add_test(
     NAME test_publish_outcomes
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_publish_outcomes.cmake"
 )
+
+add_test(
+    NAME test_package_install
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_package_install.cmake"
+)
+
+add_test(
+    NAME test_enable_options
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_enable_options.cmake"
+)

@@ -17,6 +17,6 @@
 
 @PACKAGE_INIT@
 
-include("${CMAKE_CURRENT_LIST_DIR}/Sourcelume.cmake")
+include("@PACKAGE_SOURCELUME_MODULE_INSTALL_DIR@/Sourcelume.cmake")
 
 set(Sourcelume_FOUND TRUE)

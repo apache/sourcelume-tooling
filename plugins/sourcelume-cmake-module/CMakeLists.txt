@@ -27,14 +27,32 @@ include(CMakePackageConfigHelpers)
 set(SOURCELUME_CMAKE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Sourcelume.cmake"
 )
+set(SOURCELUME_MODULE_INSTALL_DIR "${CMAKE_INSTALL_DATADIR}/cmake/Modules")
+set(SOURCELUME_CONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/Sourcelume")
 
 # Installation targets for CMake package/module usage
 install(FILES ${SOURCELUME_CMAKE_FILES}
-    DESTINATION "${CMAKE_INSTALL_DATADIR}/cmake/Modules"
+    DESTINATION "${SOURCELUME_MODULE_INSTALL_DIR}"
 )
 
-install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SourcelumeConfig.cmake"
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/Sourcelume"
+# The config file is a template: @PACKAGE_INIT@ and the module path are filled
+# in here, so find_package(Sourcelume) works from the installed prefix.
+configure_package_config_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake/SourcelumeConfig.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/SourcelumeConfig.cmake"
+    INSTALL_DESTINATION "${SOURCELUME_CONFIG_INSTALL_DIR}"
+    PATH_VARS SOURCELUME_MODULE_INSTALL_DIR
+)
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/SourcelumeConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY SameMinorVersion
+    ARCH_INDEPENDENT
+)
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/SourcelumeConfig.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/SourcelumeConfigVersion.cmake"
+    DESTINATION "${SOURCELUME_CONFIG_INSTALL_DIR}"
 )
 
 # Enable Sourcelume provenance generation targets for the module itself
