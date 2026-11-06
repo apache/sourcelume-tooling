@@ -103,7 +103,7 @@ class SourcelumeClient:
             headers["Authorization"] = f"Basic {encoded_auth}"
         return headers
 
-    def validate(self, record: Union[ProvenanceRecord, str]) -> SourcelumeResponse:
+    def validate(self, record: Union[ProvenanceRecord, str, bytes]) -> SourcelumeResponse:
         url = f"{self.registry_url}/records/validate"
         payload = record.to_json_ld() if isinstance(record, ProvenanceRecord) else record
         try:
@@ -123,7 +123,7 @@ class SourcelumeClient:
         except httpx.RequestError as exc:
             return SourcelumeResponse.error(0, "", f"Network error occurred: {exc}")
 
-    def publish(self, record: Union[ProvenanceRecord, str]) -> SourcelumeResponse:
+    def publish(self, record: Union[ProvenanceRecord, str, bytes]) -> SourcelumeResponse:
         url = f"{self.registry_url}/records"
         payload = record.to_json_ld() if isinstance(record, ProvenanceRecord) else record
         try:

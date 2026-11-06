@@ -213,3 +213,77 @@ def test_cli_rejects_broken_json_with_a_clean_error(tmp_path):
 
     assert result.exit_code == 1
     assert "not valid JSON" in result.output
+
+
+# A valid dataset record whose content the plugin's model would change if it
+# re-serialized it: a field the model doesn't have (contentCreatedEnd), a
+# creator without a role, no licenseCategory, plus CRLF line ends and
+# non-ASCII text that a re-encoding would not keep byte for byte.
+DATASET_RECORD_BYTES = (
+    '{\r\n'
+    '  "@context": "https://sourcelume.apache.org/context/0.0.1/sourcelume.jsonld",\r\n'
+    '  "id": "https://example.org/records/bytes-test",\r\n'
+    '  "type": "ProvenanceRecord",\r\n'
+    '  "identifier": "https://example.org/datasets/bytes-test",\r\n'
+    '  "name": "Æblegrød – bytes test",\r\n'
+    '  "license": "https://spdx.org/licenses/CC0-1.0.html",\r\n'
+    '  "creator": [{"type": "schema:Organization", "name": "Example Org"}],\r\n'
+    '  "created": "2026-11-06T00:00:00Z",\r\n'
+    '  "added": "2026-11-06T00:00:00Z",\r\n'
+    '  "contentCreated": "2020-01-01T00:00:00Z",\r\n'
+    '  "contentCreatedEnd": "2020-12-31T00:00:00Z",\r\n'
+    '  "origin": "Collected for the test",\r\n'
+    '  "custodyChain": [{"agent": "https://example.org/agents/a", "action": "collected", "startTime": "2020-01-01T00:00:00Z"}]\r\n'
+    '}\r\n'
+).encode("utf-8")
+
+
+@respx.mock
+def test_cli_validate_sends_dataset_records_byte_for_byte(tmp_path):
+    (tmp_path / "provenance-record.json").write_bytes(DATASET_RECORD_BYTES)
+    route = respx.post("http://localhost:8082/records/validate").mock(
+        return_value=httpx.Response(200, json={"valid": True})
+    )
+
+    result = runner.invoke(app, ["validate", str(tmp_path), "--registry-url", "http://localhost:8082"])
+
+    assert result.exit_code == 0
+    assert route.calls.last.request.content == DATASET_RECORD_BYTES
+
+
+@respx.mock
+def test_cli_publish_sends_dataset_records_byte_for_byte(tmp_path):
+    (tmp_path / "provenance-record.json").write_bytes(DATASET_RECORD_BYTES)
+    route = respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(201, json={"recordStatus": "VALIDATED"})
+    )
+
+    result = runner.invoke(app, ["publish", str(tmp_path), "--registry-url", "http://localhost:8082"])
+
+    assert result.exit_code == 0
+    assert route.calls.last.request.content == DATASET_RECORD_BYTES
+
+
+def test_cli_rejects_json_that_is_not_an_object(tmp_path):
+    (tmp_path / "provenance-record.json").write_text("[1, 2]")
+
+    result = runner.invoke(app, ["validate", str(tmp_path), "--registry-url", "http://localhost:8082"])
+
+    assert result.exit_code == 1
+    assert "not a JSON object" in result.output
+
+
+@respx.mock
+def test_cli_rejects_a_record_that_is_not_plain_utf8_before_sending(tmp_path):
+    route = respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(201, json={"recordStatus": "VALIDATED"})
+    )
+    model = json.dumps(TRAINING_RECORD)
+    for name, raw in [("bom", b"\xef\xbb\xbf" + model.encode("utf-8")), ("utf16", model.encode("utf-16"))]:
+        (tmp_path / "provenance-record.json").write_bytes(raw)
+
+        result = runner.invoke(app, ["publish", str(tmp_path), "--registry-url", "http://localhost:8082"])
+
+        assert result.exit_code == 1, name
+        assert "not valid JSON" in result.output, name
+    assert not route.called

@@ -19,7 +19,7 @@ import typer
 import os
 import json
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 from pydantic import ValidationError
 from .generator import SourcelumeGenerator
 from .client import SourcelumeClient
@@ -31,24 +31,31 @@ def get_record_path(project_dir: Path) -> Path:
     return project_dir / "provenance-record.json"
 
 
-def load_submission(record_path: Path) -> Union[ProvenanceRecord, str]:
-    """Loads a record for submission to the registry.
+def load_submission(record_path: Path) -> bytes:
+    """Loads a record for submission to the registry, as the file's exact bytes.
 
     Dataset records (`type: ProvenanceRecord`) are checked against the plugin's
     own model before they leave the machine. Every other record type — the
-    spec grows them faster than a local model can — is passed through
-    verbatim and judged by the registry, which is the authority anyway.
+    spec grows them faster than a local model can — is judged by the registry,
+    which is the authority anyway. Either way the file is sent as it is: the
+    registry stores and hashes the bytes it receives, so re-serializing here
+    would change what the record says (fields the model lacks, its defaults)
+    and what a signature over the file covers.
     """
-    with open(record_path, "r", encoding="utf-8") as f:
-        record_data = f.read()
+    record_data = record_path.read_bytes()
     try:
-        record_type = json.loads(record_data).get("type", "ProvenanceRecord")
-    except json.JSONDecodeError as e:
+        # Decode strictly: the registry accepts only UTF-8 without a BOM, and
+        # json.loads on bytes would also accept a BOM or UTF-16.
+        parsed = json.loads(record_data.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as e:
         typer.echo(f"Error: {record_path} is not valid JSON: {e}", err=True)
         raise typer.Exit(code=1)
-    if record_type == "ProvenanceRecord":
+    if not isinstance(parsed, dict):
+        typer.echo(f"Error: {record_path} is not a JSON object.", err=True)
+        raise typer.Exit(code=1)
+    if parsed.get("type", "ProvenanceRecord") == "ProvenanceRecord":
         try:
-            return ProvenanceRecord.model_validate_json(record_data)
+            ProvenanceRecord.model_validate_json(record_data)
         except ValidationError as e:
             typer.echo(f"Error: {record_path} is not a valid dataset record: {e}", err=True)
             raise typer.Exit(code=1)
