@@ -49,3 +49,8 @@ add_test(
     NAME test_enable_options
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_enable_options.cmake"
 )
+
+add_test(
+    NAME test_request_body
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_request_body.cmake"
+)

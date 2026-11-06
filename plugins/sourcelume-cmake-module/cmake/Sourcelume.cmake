@@ -521,7 +521,7 @@ function(sourcelume_validate)
     set(CURL_CMD "${CURL_EXECUTABLE}" -s -S -w "\n%{http_code}" -X POST "${SL_REGISTRY_URL}/records/validate"
         -H "Content-Type: application/json"
         -H "Accept: application/json"
-        -d "@${SL_RECORD_FILE}"
+        --data-binary "@${SL_RECORD_FILE}"
     )
 
     if(SL_TOKEN AND NOT SL_TOKEN STREQUAL "")
@@ -629,7 +629,7 @@ function(sourcelume_publish)
     set(CURL_CMD "${CURL_EXECUTABLE}" -s -S -w "\n%{http_code}" -X POST "${SL_REGISTRY_URL}/records"
         -H "Content-Type: application/json"
         -H "Accept: application/json"
-        -d "@${SL_RECORD_FILE}"
+        --data-binary "@${SL_RECORD_FILE}"
     )
 
     if(SL_TOKEN AND NOT SL_TOKEN STREQUAL "")
