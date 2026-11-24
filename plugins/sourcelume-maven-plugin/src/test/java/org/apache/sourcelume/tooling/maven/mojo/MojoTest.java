@@ -17,6 +17,7 @@
 package org.apache.sourcelume.tooling.maven.mojo;
 
 import com.sun.net.httpserver.HttpServer;
+import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +31,7 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -39,6 +41,7 @@ class MojoTest {
     private HttpServer server;
     private String serverUrl;
     private MavenProject project;
+    private final AtomicReference<byte[]> lastRequestBody = new AtomicReference<>();
 
     @TempDir
     Path tempDir;
@@ -49,9 +52,11 @@ class MojoTest {
         project.setGroupId("org.apache.sourcelume");
         project.setArtifactId("test-artifact");
         project.setVersion("0.1.0");
+        lastRequestBody.set(null);
 
         server = HttpServer.create(new InetSocketAddress(0), 0);
         server.createContext("/records/validate", exchange -> {
+            lastRequestBody.set(exchange.getRequestBody().readAllBytes());
             byte[] response = "{\"valid\":true}".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);
@@ -60,6 +65,7 @@ class MojoTest {
             }
         });
         server.createContext("/records", exchange -> {
+            lastRequestBody.set(exchange.getRequestBody().readAllBytes());
             byte[] response = "{\"status\":\"created\",\"id\":\"urn:test\"}".getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(201, response.length);
@@ -201,5 +207,80 @@ class MojoTest {
 
         assertThatThrownBy(mojo::execute)
             .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void testPublishMojoFailsWhenConfiguredRecordFileIsMissing() {
+        File missing = tempDir.resolve("does-not-exist.json").toFile();
+        File outputFile = tempDir.resolve("target/sourcelume/provenance-record.json").toFile();
+
+        PublishMojo mojo = new PublishMojo();
+        mojo.setProject(project);
+        mojo.setOutputFile(outputFile);
+        mojo.setRecordFile(missing);
+        mojo.setRegistryUrl(serverUrl);
+
+        assertThatThrownBy(mojo::execute)
+            .isInstanceOf(MojoExecutionException.class)
+            .hasMessageContaining(missing.getAbsolutePath());
+        assertThat(outputFile).doesNotExist();
+        assertThat(lastRequestBody.get()).isNull();
+    }
+
+    @Test
+    void testValidateMojoFailsWhenConfiguredRecordFileIsDirectory() {
+        File outputFile = tempDir.resolve("target/sourcelume/provenance-record.json").toFile();
+
+        ValidateMojo mojo = new ValidateMojo();
+        mojo.setProject(project);
+        mojo.setOutputFile(outputFile);
+        mojo.setRecordFile(tempDir.toFile());
+        mojo.setRegistryUrl(serverUrl);
+
+        assertThatThrownBy(mojo::execute)
+            .isInstanceOf(MojoExecutionException.class)
+            .hasMessageContaining(tempDir.toFile().getAbsolutePath());
+        assertThat(outputFile).doesNotExist();
+        assertThat(lastRequestBody.get()).isNull();
+    }
+
+    @Test
+    void testPublishMojoSendsConfiguredRecordFileByteForByte() throws Exception {
+        byte[] raw = ("{\r\n  \"type\": \"TrainingProvenanceRecord\",\r\n"
+            + "  \"name\": \"Æblegrød – bytes test\"\r\n}\r\n").getBytes(StandardCharsets.UTF_8);
+        Path recordFile = tempDir.resolve("custom-record.json");
+        Files.write(recordFile, raw);
+        File outputFile = tempDir.resolve("target/sourcelume/provenance-record.json").toFile();
+
+        PublishMojo mojo = new PublishMojo();
+        mojo.setProject(project);
+        mojo.setOutputFile(outputFile);
+        mojo.setRecordFile(recordFile.toFile());
+        mojo.setRegistryUrl(serverUrl);
+
+        mojo.execute();
+
+        assertThat(lastRequestBody.get()).isEqualTo(raw);
+        assertThat(outputFile).doesNotExist();
+    }
+
+    @Test
+    void testValidateMojoSendsConfiguredRecordFileByteForByte() throws Exception {
+        byte[] raw = ("{\r\n  \"type\": \"TrainingProvenanceRecord\",\r\n"
+            + "  \"name\": \"Æblegrød – bytes test\"\r\n}\r\n").getBytes(StandardCharsets.UTF_8);
+        Path recordFile = tempDir.resolve("custom-record.json");
+        Files.write(recordFile, raw);
+        File outputFile = tempDir.resolve("target/sourcelume/provenance-record.json").toFile();
+
+        ValidateMojo mojo = new ValidateMojo();
+        mojo.setProject(project);
+        mojo.setOutputFile(outputFile);
+        mojo.setRecordFile(recordFile.toFile());
+        mojo.setRegistryUrl(serverUrl);
+
+        mojo.execute();
+
+        assertThat(lastRequestBody.get()).isEqualTo(raw);
+        assertThat(outputFile).doesNotExist();
     }
 }
