@@ -29,6 +29,7 @@ import org.apache.sourcelume.tooling.maven.util.SpecBuilder;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Duration;
 
@@ -260,10 +261,14 @@ public abstract class AbstractSourcelumeMojo extends AbstractMojo {
      * @throws MojoExecutionException on serialization or I/O failure
      */
     protected String resolveOrGenerateJson() throws MojoExecutionException {
-        if (recordFile != null && recordFile.exists() && recordFile.isFile()) {
+        if (recordFile != null) {
+            if (!recordFile.exists() || !recordFile.isFile()) {
+                throw new MojoExecutionException(
+                    "Configured recordFile does not exist or is not a file: " + recordFile.getAbsolutePath());
+            }
             try {
                 getLog().info("Using existing Sourcelume record file: " + recordFile.getAbsolutePath());
-                return Files.readString(recordFile.toPath());
+                return Files.readString(recordFile.toPath(), StandardCharsets.UTF_8);
             } catch (IOException e) {
                 throw new MojoExecutionException("Failed to read record file: " + recordFile, e);
             }
