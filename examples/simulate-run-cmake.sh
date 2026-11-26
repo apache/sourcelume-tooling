@@ -77,7 +77,7 @@ else
   VALIDATE_EXIT=$?
   echo -e "\n${YELLOW}Notice: Could not validate against local Sourcelume Registry (Exit code: ${VALIDATE_EXIT}).${RESET}"
   echo -e "Ensure Sourcelume Registry is running locally on ${REGISTRY_URL}:"
-  echo -e "  cd ../sourcelume-registry && mvn -pl sourcelume-registry-runtime-quarkus quarkus:dev"
+  echo -e "  cd ../sourcelume-registry && mvn -pl sourcelume-registry-distribution-postgres quarkus:dev"
 fi
 
 # Step 4: Attempt Live Submission to Local Sourcelume Registry

@@ -22,13 +22,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SAMPLE_DIR="${SCRIPT_DIR}/helloworld-sample"
 REGISTRY_URL="${SOURCELUME_REGISTRY_URL:-http://localhost:8082}"
 
-# Ensure Maven is on PATH if in IntelliJ or standard locations
-if ! command -v mvn >/dev/null 2>&1; then
-  if [ -d "/Users/jgoodyear/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/maven-plugin/lib/maven3/bin" ]; then
-    export PATH="/Users/jgoodyear/Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins/maven-plugin/lib/maven3/bin:$PATH"
-  fi
-fi
-
 # Styling
 BOLD="\033[1m"
 GREEN="\033[0;32m"
@@ -75,7 +68,7 @@ else
   VALIDATE_EXIT=$?
   echo -e "\n${YELLOW}Notice: Could not validate against local Sourcelume Registry (Exit code: ${VALIDATE_EXIT}).${RESET}"
   echo -e "Ensure Sourcelume Registry is running locally on ${REGISTRY_URL}:"
-  echo -e "  cd ../sourcelume-registry && mvn -pl sourcelume-registry-runtime-quarkus quarkus:dev"
+  echo -e "  cd ../sourcelume-registry && mvn -pl sourcelume-registry-distribution-postgres quarkus:dev"
 fi
 
 # Step 4: Attempt Live Submission to Local Sourcelume Registry
