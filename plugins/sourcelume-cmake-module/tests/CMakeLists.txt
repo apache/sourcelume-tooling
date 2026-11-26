@@ -54,3 +54,8 @@ add_test(
     NAME test_request_body
     COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_request_body.cmake"
 )
+
+add_test(
+    NAME test_invalid_record_file
+    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/test_invalid_record_file.cmake"
+)
