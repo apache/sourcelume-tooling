@@ -491,6 +491,9 @@ function(sourcelume_validate)
     if(NOT EXISTS "${SL_RECORD_FILE}")
         message(FATAL_ERROR "[Sourcelume] Provenance Record file not found: ${SL_RECORD_FILE}. Run 'sourcelume_generate' first.")
     endif()
+    if(IS_DIRECTORY "${SL_RECORD_FILE}")
+        message(FATAL_ERROR "[Sourcelume] Provenance Record path is not a file: ${SL_RECORD_FILE}")
+    endif()
 
     # Resolve Auth
     if(NOT SL_TOKEN AND DEFINED ENV{SOURCELUME_REGISTRY_TOKEN})
@@ -599,6 +602,9 @@ function(sourcelume_publish)
 
     if(NOT EXISTS "${SL_RECORD_FILE}")
         message(FATAL_ERROR "[Sourcelume] Provenance Record file not found: ${SL_RECORD_FILE}. Run 'sourcelume_generate' first.")
+    endif()
+    if(IS_DIRECTORY "${SL_RECORD_FILE}")
+        message(FATAL_ERROR "[Sourcelume] Provenance Record path is not a file: ${SL_RECORD_FILE}")
     endif()
 
     # Resolve Auth
