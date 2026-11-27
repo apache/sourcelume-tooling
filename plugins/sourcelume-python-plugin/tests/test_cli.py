@@ -287,3 +287,41 @@ def test_cli_rejects_a_record_that_is_not_plain_utf8_before_sending(tmp_path):
         assert result.exit_code == 1, name
         assert "not valid JSON" in result.output, name
     assert not route.called
+
+
+@respx.mock
+def test_cli_validate_and_publish_fail_cleanly_when_record_is_a_directory(tmp_path):
+    (tmp_path / "provenance-record.json").mkdir()
+    validate_route = respx.post("http://localhost:8082/records/validate").mock(
+        return_value=httpx.Response(200, json={"valid": True})
+    )
+    publish_route = respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(201, json={"recordStatus": "VALIDATED"})
+    )
+
+    for cmd in ("validate", "publish"):
+        result = runner.invoke(app, [cmd, str(tmp_path), "--registry-url", "http://localhost:8082"])
+        assert result.exit_code == 1, cmd
+        assert result.exception is None or isinstance(result.exception, SystemExit), cmd
+        assert "not a file" in result.output, cmd
+
+    assert not validate_route.called
+    assert not publish_route.called
+
+
+@respx.mock
+def test_cli_validate_and_publish_fail_cleanly_when_record_is_missing(tmp_path):
+    validate_route = respx.post("http://localhost:8082/records/validate").mock(
+        return_value=httpx.Response(200, json={"valid": True})
+    )
+    publish_route = respx.post("http://localhost:8082/records").mock(
+        return_value=httpx.Response(201, json={"recordStatus": "VALIDATED"})
+    )
+
+    for cmd in ("validate", "publish"):
+        result = runner.invoke(app, [cmd, str(tmp_path), "--registry-url", "http://localhost:8082"])
+        assert result.exit_code == 1, cmd
+        assert "not found" in result.output, cmd
+
+    assert not validate_route.called
+    assert not publish_route.called

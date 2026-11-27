@@ -31,6 +31,15 @@ def get_record_path(project_dir: Path) -> Path:
     return project_dir / "provenance-record.json"
 
 
+def _require_record_file(record_path: Path) -> None:
+    if not record_path.exists():
+        typer.echo(f"Error: {record_path} not found. Run 'generate' first.", err=True)
+        raise typer.Exit(code=1)
+    if not record_path.is_file():
+        typer.echo(f"Error: {record_path} is not a file.", err=True)
+        raise typer.Exit(code=1)
+
+
 def load_submission(record_path: Path) -> bytes:
     """Loads a record for submission to the registry, as the file's exact bytes.
 
@@ -94,9 +103,7 @@ def validate(
     project_dir = Path(project_dir).resolve()
     record_path = get_record_path(project_dir)
 
-    if not record_path.exists():
-        typer.echo(f"Error: {record_path} not found. Run 'generate' first.", err=True)
-        raise typer.Exit(code=1)
+    _require_record_file(record_path)
 
     typer.echo(f"Validating {record_path} against {registry_url}...")
 
@@ -133,9 +140,7 @@ def publish(
     project_dir = Path(project_dir).resolve()
     record_path = get_record_path(project_dir)
 
-    if not record_path.exists():
-        typer.echo(f"Error: {record_path} not found. Run 'generate' first.", err=True)
-        raise typer.Exit(code=1)
+    _require_record_file(record_path)
 
     typer.echo(f"Publishing {record_path} to {registry_url}...")
 
