@@ -24,8 +24,10 @@ This folder provides ready-to-use sample projects and simulation scripts to demo
 
 - **`helloworld-sample/`**: A sample Java/Maven Hello World project configured with `sourcelume-maven-plugin`.
 - **`helloworld-cmake-sample/`**: A sample C++/CMake Hello World project configured with `sourcelume-cmake-module`.
+- **`helloworld-python-sample/`**: A sample Python Hello World project configured for `sourcelume-python-plugin`.
 - **`simulate-run.sh`**: Automated simulation runner for Maven projects.
 - **`simulate-run-cmake.sh`**: Automated simulation runner for CMake projects.
+- **`simulate-run-python.sh`**: Automated simulation runner for Python projects.
 
 ---
 
@@ -157,6 +159,23 @@ SOURCELUME_DRY_RUN=1 cmake --build build --target sourcelume_publish
 # Live validation & publishing (when registry is running at localhost:8082)
 cmake --build build --target sourcelume_validate
 cmake --build build --target sourcelume_publish
+```
+
+---
+
+## Manual Execution Walkthrough (Python)
+
+You can also test the Python plugin workflow directly in `examples/helloworld-python-sample`:
+
+```bash
+cd examples/helloworld-python-sample
+
+# Generate provenance record from pyproject.toml
+sourcelume generate .
+
+# Live validation & publishing (when registry is running at localhost:8082)
+sourcelume validate . --registry-url http://localhost:8082
+sourcelume publish . --registry-url http://localhost:8082
 ```
 
 ---

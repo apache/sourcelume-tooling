@@ -144,6 +144,9 @@ Ready-to-run sample projects and simulation scripts are provided in the `example
 
 # Run automated simulation for CMake
 ./examples/simulate-run-cmake.sh
+
+# Run automated simulation for Python
+./examples/simulate-run-python.sh
 ```
 
 Or explore the sample projects directly:
